@@ -8,6 +8,8 @@
 #include <alpm.h>
 #include <alpm_list.h>
 
+#define VERSION "0.2"
+
 struct pu_missing_file_t {
 	alpm_pkg_t *pkg;
 	alpm_file_t *file;
@@ -454,10 +456,39 @@ alpm_list_t *register_syncdbs(alpm_handle_t *handle, alpm_list_t *repos)
 	return registered;
 }
 
-int main(int argc, char **argv)
-{
-	struct pu_config_t *config = initialize_config_from_file("/etc/pacman.conf");
-	alpm_handle_t *handle = initialize_handle_from_config(config);
+void version(void) {
+	printf("pacreport v" VERSION " - libalpm v%s\n", alpm_version());
+	exit(0);
+}
+
+void usage(int ret) {
+	FILE *out = (ret ? stderr : stdout);
+	fputs("Usage: pacreport [--help|--version]\n", out);
+	fputs("Show package information useful for maintaining"
+			"a clean Arch Linux system.\n", out);
+	exit(ret);
+}
+
+int main(int argc, char **argv) {
+	struct pu_config_t *config;
+	alpm_handle_t *handle;
+
+	/* process arguments */
+	for(argv++; *argv; argv++) {
+		if(strcmp(*argv, "--help") == 0) {
+			usage(0);
+		} else if(strcmp(*argv, "--version") == 0) {
+			version();
+		} else {
+			printf("Invalid argument: '%s'\n", *argv);
+		}
+	}
+	if(argc > 1) {
+		usage(-1);
+	}
+
+	config = initialize_config_from_file("/etc/pacman.conf");
+	handle = initialize_handle_from_config(config);
 
 	if(!handle) {
 		exit(-1);
