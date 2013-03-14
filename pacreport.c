@@ -1,5 +1,3 @@
-
-
 #include <string.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -139,11 +137,15 @@ void print_pkg_info(alpm_handle_t *handle, alpm_pkg_t *pkg, size_t pkgname_len)
 	printf("  %-*s	%s", pkgname_len, alpm_pkg_get_name(pkg),
 			hr_size( get_pkg_chain_size(handle, pkg, NULL), size));
 
-	for(group = alpm_pkg_get_groups(pkg); group; group = group->next) {
-		printf(" [%s]", group->data);
-		if(group->next) {
-			putchar(',');
+	if(alpm_pkg_get_groups(pkg)) {
+		fputs(" (", stdout);
+		for(group = alpm_pkg_get_groups(pkg); group; group = group->next) {
+			fputs(group->data, stdout);
+			if(group->next) {
+				putchar(' ');
+			}
 		}
+		putchar(')');
 	}
 
 	putchar('\n');
