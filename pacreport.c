@@ -229,23 +229,22 @@ void print_foreign(alpm_handle_t *handle)
 
 void print_group_missing(alpm_handle_t *handle)
 {
-	alpm_list_t *matches = NULL;
+	char **group, *groups[] = {"base", "base-devel", NULL};
 	alpm_db_t *localdb = alpm_get_localdb(handle);
-	alpm_list_t *p, *pkgs = alpm_find_group_pkgs(alpm_get_syncdbs(handle), "base");
-	for(p = pkgs; p; p = p->next) {
-		if(!alpm_db_get_pkg(localdb, alpm_pkg_get_name(p->data))) {
-			matches = alpm_list_add(matches, p->data);
-		}
-	}
-	alpm_list_free(pkgs);
+	alpm_list_t *matches = NULL;
 
-	pkgs = alpm_find_group_pkgs(alpm_get_syncdbs(handle), "base-devel");
-	for(p = pkgs; p; p = p->next) {
-		if(!alpm_db_get_pkg(localdb, alpm_pkg_get_name(p->data))) {
-			matches = alpm_list_add(matches, p->data);
+	for(group = groups; *group; group++) {
+		alpm_list_t *p, *pkgs;
+		pkgs = alpm_find_group_pkgs(alpm_get_syncdbs(handle), *group);
+		for(p = pkgs; p; p = p->next) {
+			const char *pkgname = alpm_pkg_get_name(p->data);
+			if(!alpm_list_find_ptr(matches, p->data)
+					&& !alpm_db_get_pkg(localdb, pkgname)) {
+				matches = alpm_list_add(matches, p->data);
+			}
 		}
+		alpm_list_free(pkgs);
 	}
-	alpm_list_free(pkgs);
 
 	puts("Missing Group Packages:");
 	print_pkglist(handle, matches);
