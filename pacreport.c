@@ -231,6 +231,7 @@ void print_group_missing(alpm_handle_t *handle)
 {
 	char **group, *groups[] = {"base", "base-devel", NULL};
 	alpm_db_t *localdb = alpm_get_localdb(handle);
+	alpm_list_t *localpkgs = alpm_db_get_pkgcache(localdb);
 	alpm_list_t *matches = NULL;
 
 	for(group = groups; *group; group++) {
@@ -239,7 +240,7 @@ void print_group_missing(alpm_handle_t *handle)
 		for(p = pkgs; p; p = p->next) {
 			const char *pkgname = alpm_pkg_get_name(p->data);
 			if(!alpm_list_find_ptr(matches, p->data)
-					&& !alpm_db_get_pkg(localdb, pkgname)) {
+					&& !alpm_find_satisfier(localpkgs, pkgname)) {
 				matches = alpm_list_add(matches, p->data);
 			}
 		}
