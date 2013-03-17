@@ -83,12 +83,12 @@ char *hr_size(unsigned int bytes, char *dest) {
 unsigned int get_pkg_chain_size(alpm_handle_t *handle,
 		alpm_pkg_t *pkg, alpm_list_t *depchain)
 {
-	alpm_list_t *d;
+	alpm_db_t *localdb = alpm_get_localdb(handle);
+	alpm_list_t *localpkgs = alpm_db_get_pkgcache(localdb);
 	unsigned int size = 0;
+	alpm_list_t *d;
 
-	if(!alpm_list_find_ptr(depchain, pkg)) {
-		depchain = alpm_list_add(depchain, pkg);
-	}
+	depchain = alpm_list_add(depchain, pkg);
 
 	for(d = depchain; d; d = d->next) {
 		alpm_pkg_t *p = d->data;
@@ -98,21 +98,20 @@ unsigned int get_pkg_chain_size(alpm_handle_t *handle,
 
 		for(dep = deps; dep; dep = dep->next) {
 			char *depstring = alpm_dep_compute_string(dep->data);
-			alpm_pkg_t *satisfier = alpm_find_dbs_satisfier(handle,
-					alpm_get_syncdbs(handle), depstring);
+			alpm_pkg_t *satisfier = alpm_find_satisfier(localpkgs, depstring);
 			free(depstring);
 
 			/* move on if the dependency was installed explicitly or already
 			 * processed */
-			if(alpm_pkg_get_reason(satisfier) == ALPM_PKG_REASON_EXPLICIT ||
-					alpm_list_find_ptr(depchain, satisfier)) {
+			if(!satisfier
+					|| alpm_pkg_get_reason(satisfier) == ALPM_PKG_REASON_EXPLICIT
+					|| alpm_list_find_ptr(depchain, satisfier)) {
 				continue;
 			}
 
 			/* check if the dependency is required outside the chain */
 			alpm_list_t *r, *rb = alpm_pkg_compute_requiredby(satisfier);
 			int required = 0;
-			alpm_db_t *localdb = alpm_get_localdb(handle);
 			for(r = rb; r; r = r->next) {
 				alpm_pkg_t *p = alpm_db_get_pkg(localdb, r->data);
 				if(!alpm_list_find_ptr(depchain, p)) {
