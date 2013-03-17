@@ -80,15 +80,14 @@ char *hr_size(unsigned int bytes, char *dest) {
  *
  * @return size in bytes
  */
-unsigned int get_pkg_chain_size(alpm_handle_t *handle,
-		alpm_pkg_t *pkg, alpm_list_t *depchain)
+unsigned int get_pkg_chain_size(alpm_handle_t *handle, alpm_pkg_t *pkg)
 {
 	alpm_db_t *localdb = alpm_get_localdb(handle);
 	alpm_list_t *localpkgs = alpm_db_get_pkgcache(localdb);
+	alpm_list_t *depchain = alpm_list_add(NULL, pkg);
 	unsigned int size = 0;
 	alpm_list_t *d;
 
-	depchain = alpm_list_add(depchain, pkg);
 
 	for(d = depchain; d; d = d->next) {
 		alpm_pkg_t *p = d->data;
@@ -136,7 +135,7 @@ void print_pkg_info(alpm_handle_t *handle, alpm_pkg_t *pkg, size_t pkgname_len)
 	alpm_list_t *group;
 
 	printf("  %-*s	%s", pkgname_len, alpm_pkg_get_name(pkg),
-			hr_size( get_pkg_chain_size(handle, pkg, NULL), size));
+			hr_size( get_pkg_chain_size(handle, pkg), size));
 
 	if(alpm_pkg_get_groups(pkg)) {
 		fputs(" (", stdout);
