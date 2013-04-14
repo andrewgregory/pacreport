@@ -31,3 +31,6 @@ Options
 
 *--version*::
     Display version information.
+
+*--missing-files*::
+    Check for package files that do not exist on the filesystem.

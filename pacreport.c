@@ -462,13 +462,15 @@ void version(void) {
 void usage(int ret) {
 	FILE *out = (ret ? stderr : stdout);
 	fputs("Usage: pacreport [--help|--version]\n", out);
+	fputs("       pacreport [--missing-files]\n", out);
 	fputs("Show package information useful for maintaining"
-			"a clean Arch Linux system.\n", out);
+			" a clean Arch Linux system.\n", out);
 	exit(ret);
 }
 
 int main(int argc, char **argv) {
 	struct pu_config_t *config;
+	int missing_files = 0;
 	alpm_handle_t *handle;
 
 	/* process arguments */
@@ -477,12 +479,12 @@ int main(int argc, char **argv) {
 			usage(0);
 		} else if(strcmp(*argv, "--version") == 0) {
 			version();
+		} else if(strcmp(*argv, "--missing-files") == 0) {
+			missing_files = 1;
 		} else {
 			printf("Invalid argument: '%s'\n", *argv);
+			usage(-1);
 		}
-	}
-	if(argc > 1) {
-		usage(-1);
 	}
 
 	config = initialize_config_from_file("/etc/pacman.conf");
@@ -499,7 +501,9 @@ int main(int argc, char **argv) {
 	print_foreign(handle);
 
 	print_group_missing(handle);
-	print_missing_files(handle);
+	if(missing_files) {
+		print_missing_files(handle);
+	}
 	print_cache_sizes(handle);
 
 	return 0;
