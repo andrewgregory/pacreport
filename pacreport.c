@@ -298,7 +298,34 @@ void print_missing_files(alpm_handle_t *handle)
 	FREELIST(matches);
 }
 
-unsigned int get_dir_size(const char *path)
+int is_cache_file_installed(alpm_handle_t *handle, const char *path)
+{
+	char *pkgver, *pkgname = strdup(path);
+	int ret = 0;
+
+	if(!(pkgver = strrchr(pkgname, '-'))) {
+		goto cleanup;
+	}
+	*pkgver = '\0';
+	for(pkgver--; *pkgver != '-' && pkgver > pkgname; pkgver--);
+	for(pkgver--; *pkgver != '-' && pkgver > pkgname; pkgver--);
+
+	if(pkgver > pkgname) {
+		*pkgver = '\0';
+		pkgver++;
+		alpm_pkg_t *lp = alpm_db_get_pkg(alpm_get_localdb(handle), pkgname);
+		if(lp && alpm_pkg_vercmp(alpm_pkg_get_version(lp), pkgver) == 0) {
+			ret = 1;
+		}
+	}
+
+cleanup:
+	free(pkgname);
+	return ret;
+}
+
+size_t get_cache_size(alpm_handle_t *handle, const char *path,
+		size_t *uninstalled)
 {
 	unsigned int bytes = 0;
 	DIR *d = opendir(path);
@@ -311,19 +338,23 @@ unsigned int get_dir_size(const char *path)
 	size_t max = PATH_MAX - plen;
 
 	for(de = readdir(d); de; de = readdir(d)) {
-		if(strcmp(".", de->d_name) == 0 || strcmp("..", de->d_name) == 0) {
+		if(de->d_name[0] == '.'
+				&& (de->d_name[1] == '\0' || strcmp("..", de->d_name) == 0)) {
 			continue;
 		}
 		strncpy(tail, de->d_name, max);
 		struct stat buf;
-		if(stat(de_path, &buf)) {
+		if(stat(de_path, &buf) != 0) {
 			continue;
 		}
 
 		if(S_ISDIR(buf.st_mode)) {
-			bytes += get_dir_size(de_path);
+			bytes += get_cache_size(handle, de_path, uninstalled);
 		} else {
 			bytes += buf.st_size;
+			if(uninstalled && !is_cache_file_installed(handle, de->d_name)) {
+				*uninstalled += buf.st_size;
+			}
 		}
 	}
 	return bytes;
@@ -343,9 +374,12 @@ void print_cache_sizes(alpm_handle_t *handle)
 
 	puts("Package Cache Size:");
 	for(c = cache_dirs; c; c = c->next) {
-		char *size = hr_size(get_dir_size(c->data), NULL);
-		printf("  %*s %s\n", pathlen, c->data, size);
+		size_t uninstalled = 0;
+		char *size = hr_size(get_cache_size(handle, c->data, &uninstalled), NULL);
+		char *usize = hr_size(uninstalled, NULL);
+		printf("  %*s %s (%s not installed)\n", pathlen, c->data, size, usize);
 		free(size);
+		free(usize);
 	}
 }
 
