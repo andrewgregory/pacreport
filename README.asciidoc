@@ -14,7 +14,7 @@ Synopsis
 
 Description
 -----------
-Generates a comprehensive package report for Arch Linux:
+Generates a comprehensive package report for alpm-based systems:
 
 * top level packages installed explicitly
 * top level packages installed as dependencies
@@ -26,11 +26,11 @@ Generates a comprehensive package report for Arch Linux:
 
 Options
 -------
-*--help*::
+*-h, --help*::
     Display brief help message.
 
-*--version*::
+*-V, --version*::
     Display version information.
 
-*--missing-files*::
+*--missing-files, --no-missing-files*::
     Check for package files that do not exist on the filesystem.

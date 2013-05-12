@@ -496,9 +496,7 @@ void version(void) {
 void usage(int ret) {
 	FILE *out = (ret ? stderr : stdout);
 	fputs("Usage: pacreport [--help|--version]\n", out);
-	fputs("       pacreport [--missing-files]\n", out);
-	fputs("Show package information useful for maintaining"
-			" a clean Arch Linux system.\n", out);
+	fputs("       pacreport [--missing-files|--no-missing-files]\n", out);
 	exit(ret);
 }
 
@@ -509,14 +507,16 @@ int main(int argc, char **argv) {
 
 	/* process arguments */
 	for(argv++; *argv; argv++) {
-		if(strcmp(*argv, "--help") == 0) {
+		if(strcmp(*argv, "--help") == 0 || strcmp(*argv, "-h") == 0) {
 			usage(0);
-		} else if(strcmp(*argv, "--version") == 0) {
+		} else if(strcmp(*argv, "--version") == 0 || strcmp(*argv, "-V") == 0) {
 			version();
 		} else if(strcmp(*argv, "--missing-files") == 0) {
 			missing_files = 1;
+		} else if(strcmp(*argv, "--no-missing-files") == 0) {
+			missing_files = 0;
 		} else {
-			printf("Invalid argument: '%s'\n", *argv);
+			fprintf(stderr, "Invalid argument: '%s'\n", *argv);
 			usage(-1);
 		}
 	}
@@ -525,6 +525,7 @@ int main(int argc, char **argv) {
 	handle = initialize_handle_from_config(config);
 
 	if(!handle) {
+		fprintf(stderr, "Could not initialize alpm handle.\n");
 		exit(-1);
 	}
 
