@@ -34,3 +34,11 @@ Options
 
 *--missing-files, --no-missing-files*::
     Check for package files that do not exist on the filesystem.
+
+*-b, --backups*::
+    Scans the filesystem for pacman's backup files.  Only searches */etc* by
+    default.  In order to search the remainder of the filesystem, pass this
+    twice of in conjunction with *--unowned*.
+
+*--unowned*::
+    Scan the filesystem for files not owned by any package.

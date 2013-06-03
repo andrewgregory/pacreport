@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -8,7 +9,7 @@
 #include <alpm.h>
 #include <alpm_list.h>
 
-#define VERSION "0.2"
+#define VERSION "0.3"
 
 struct pu_missing_file_t {
 	alpm_pkg_t *pkg;
@@ -500,9 +501,142 @@ void usage(int ret) {
 	exit(ret);
 }
 
+int file_is_unowned(alpm_handle_t *handle, const char *path) {
+	alpm_list_t *p, *pkgs = alpm_db_get_pkgcache(alpm_get_localdb(handle));
+	for(p = pkgs; p; p = p->next) {
+		if(alpm_filelist_contains(alpm_pkg_get_files(p->data), path + 1)) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+void _scan_filesystem(alpm_handle_t *handle, const char *dir, int backups,
+		int orphans, alpm_list_t **backups_found, alpm_list_t **orphans_found) {
+	static char *skip[] = {
+		"/etc/ssl/certs",
+		"/dev",
+		"/home",
+		"/media",
+		"/mnt",
+		"/proc",
+		"/root",
+		"/run",
+		"/sys",
+		"/tmp",
+		"/usr/share/mime",
+		"/var/cache",
+		"/var/log",
+		"/var/run",
+		"/var/tmp",
+		NULL
+	};
+
+	char path[PATH_MAX];
+	char *filename = path + strlen(dir);
+	strcpy(path, dir);
+
+	DIR *dirp = opendir(dir);
+	if(!dirp) {
+		fprintf(stderr, "Error opening '%s' (%s).\n", dir, strerror(errno));
+		return;
+	}
+
+	struct dirent *entry;
+	while((entry = readdir(dirp))) {
+		struct stat buf;
+		char **s;
+		int need_skip = 0;
+
+		if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 ) {
+			continue;
+		}
+
+		strcpy(filename, entry->d_name);
+
+		for(s = skip; *s && !need_skip; s++) {
+			if(strcmp(path, *s) == 0) {
+				need_skip = 1;
+			}
+		}
+		if(need_skip) {
+			continue;
+		}
+
+		if(lstat(path, &buf) != 0) {
+			fprintf(stderr, "Error reading '%s' (%s).\n", path, strerror(errno));
+			continue;
+		}
+
+		if(S_ISDIR(buf.st_mode)) {
+			strcat(filename, "/");
+			if(orphans && file_is_unowned(handle, path)) {
+				*orphans_found = alpm_list_add(*orphans_found, strdup(path));
+				if(backups) {
+					_scan_filesystem(handle, path, backups, 0, backups_found, orphans_found);
+				}
+			} else {
+				_scan_filesystem(handle, path, backups, orphans, backups_found, orphans_found);
+			}
+		} else {
+			if(orphans && file_is_unowned(handle, path)) {
+					*orphans_found = alpm_list_add(*orphans_found, strdup(path));
+			}
+
+			if(backups) {
+				if(strstr(filename, ".pacnew")
+						|| strstr(filename, ".pacsave")
+						|| strstr(filename, ".pacorig")) {
+					*backups_found = alpm_list_add(*backups_found, strdup(path));
+				}
+			}
+		}
+	}
+	closedir(dirp);
+}
+
+void scan_filesystem(alpm_handle_t *handle, int backups, int orphans) {
+	char *base_dir = "/etc/";
+	alpm_list_t *orphans_found = NULL, *backups_found = NULL;
+	if(backups > 1 || orphans) {
+		base_dir = "/";
+	}
+	_scan_filesystem(handle, base_dir, backups, orphans, &backups_found, &orphans_found);
+
+	if(orphans) {
+		puts("Unowned Files:");
+		if(!orphans_found) {
+			puts("  None");
+		} else {
+			alpm_list_t *i;
+			orphans_found = alpm_list_msort(orphans_found,
+					alpm_list_count(orphans_found), (alpm_list_fn_cmp) strcmp);
+			for(i = orphans_found; i; i = i->next) {
+				printf("  %s\n", i->data);
+			}
+			FREELIST(orphans_found);
+		}
+	}
+
+	if(backups) {
+		puts("Pacman Backup Files:");
+		if(!backups_found) {
+			puts("  None");
+		} else {
+			alpm_list_t *i;
+			backups_found = alpm_list_msort(backups_found,
+					alpm_list_count(backups_found), (alpm_list_fn_cmp) strcmp);
+			for(i = backups_found; i; i = i->next) {
+				printf("  %s\n", i->data);
+			}
+			FREELIST(backups_found);
+		}
+	}
+}
+
 int main(int argc, char **argv) {
 	struct pu_config_t *config;
-	int missing_files = 0;
+	int missing_files = 0, backup_files = 0, orphan_files = 0;
 	alpm_handle_t *handle;
 
 	/* process arguments */
@@ -515,6 +649,10 @@ int main(int argc, char **argv) {
 			missing_files = 1;
 		} else if(strcmp(*argv, "--no-missing-files") == 0) {
 			missing_files = 0;
+		} else if(strcmp(*argv, "--backups") == 0 || strcmp(*argv, "-b") == 0) {
+			backup_files++;
+		} else if(strcmp(*argv, "--unowned") == 0) {
+			orphan_files++;
 		} else {
 			fprintf(stderr, "Invalid argument: '%s'\n", *argv);
 			usage(-1);
@@ -530,6 +668,10 @@ int main(int argc, char **argv) {
 	}
 
 	register_syncdbs(handle, config->repos);
+
+	if(backup_files || orphan_files) {
+		scan_filesystem(handle, backup_files, orphan_files);
+	}
 
 	print_toplevel_explicit(handle);
 	print_toplevel_depends(handle);
