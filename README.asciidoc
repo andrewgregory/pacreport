@@ -1,7 +1,7 @@
 // Copyright (C) 2013 Andrew Gregory <andrew.gregory.8@gmail.com>
 // See the COPYING file for copying permissions.
 
-pacreport(8)
+pacreport(1)
 ============
 
 NAME
