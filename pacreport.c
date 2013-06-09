@@ -11,39 +11,20 @@
 
 #define VERSION "0.3"
 
-struct pu_missing_file_t {
+struct pkg_file_t {
 	alpm_pkg_t *pkg;
 	alpm_file_t *file;
 };
 
-struct pu_repo_t {
-	char *name;
-};
-
-struct pu_config_t {
-	char *rootdir, *dbpath;
-	alpm_list_t *repos, *cachedirs;
-};
-
-struct pu_missing_file_t *pu_missing_file_new(alpm_pkg_t *pkg, alpm_file_t *file)
+struct pkg_file_t *pkg_file_new(alpm_pkg_t *pkg, alpm_file_t *file)
 {
-	struct pu_missing_file_t *mf = calloc(sizeof(struct pu_missing_file_t), 1);
+	struct pkg_file_t *mf = calloc(sizeof(struct pkg_file_t), 1);
 	if(!mf) {
 		return NULL;
 	}
 	mf->pkg = pkg;
 	mf->file = file;
 	return mf;
-}
-
-struct pu_config_t *pu_config_new(void)
-{
-	return calloc(sizeof(struct pu_config_t), 1);
-}
-
-struct pu_repo_t *pu_repo_new(void)
-{
-	return calloc(sizeof(struct pu_repo_t), 1);
 }
 
 /**
@@ -259,14 +240,14 @@ void print_filelist(alpm_handle_t *handle, alpm_list_t *files)
 	alpm_list_t *f;
 	const char *root = alpm_option_get_root(handle);
 	for(f = files; f; f = f->next) {
-		struct pu_missing_file_t *mf = f->data;
+		struct pkg_file_t *mf = f->data;
 		size_t len = strlen(alpm_pkg_get_name(mf->pkg));
 		if(len > pkgname_len) {
 			pkgname_len = len;
 		}
 	}
 	for(f = files; f; f = f->next) {
-		struct pu_missing_file_t *mf = f->data;
+		struct pkg_file_t *mf = f->data;
 		printf("  %-*s	%s%s\n", pkgname_len, alpm_pkg_get_name(mf->pkg),
 				root, mf->file->name);
 	}
@@ -288,8 +269,7 @@ void print_missing_files(alpm_handle_t *handle)
 		for(i = 0; i < files->count; ++i) {
 			strncpy(tail, files->files[i].name, max);
 			if(access(path, F_OK) != 0) {
-				struct pu_missing_file_t *mf = pu_missing_file_new(p->data,
-						&files->files[i]);
+				struct pkg_file_t *mf = pkg_file_new(p->data, &files->files[i]);
 				matches = alpm_list_add(matches, mf);
 			}
 		}
@@ -403,11 +383,12 @@ size_t strtrim(char *str) {
 }
 
 
-struct pu_config_t *initialize_config_from_file(const char *filename)
+alpm_handle_t *initialize_from_file(const char *filename)
 {
-	struct pu_config_t *config = pu_config_new();
-	config->rootdir = strdup("/");
-	config->dbpath = strdup("/var/lib/pacman/");
+	alpm_handle_t *handle;
+	alpm_list_t *repos = NULL, *caches = NULL, *i;
+	char *rootdir = strdup("/");
+	char *dbpath = strdup("/var/lib/pacman/");
 
 	FILE *infile = fopen(filename, "r");
 	char buf[BUFSIZ];
@@ -438,55 +419,39 @@ struct pu_config_t *initialize_config_from_file(const char *filename)
 			state = line + 1;
 
 			if(strcmp(state, "options") != 0) {
-				struct pu_repo_t *r = pu_repo_new();
-				r->name = strdup(state);
-				config->repos = alpm_list_add(config->repos, r);
+				repos = alpm_list_add(repos, strdup(state));
 			}
 		} else if(strcmp(key, "RootDir") == 0) {
-			free(config->rootdir);
-			config->rootdir = strdup(val);
+			free(rootdir);
+			rootdir = strdup(val);
 		} else if(strcmp(key, "DBPath") == 0) {
-			free(config->dbpath);
-			config->dbpath = strdup(val);
+			free(dbpath);
+			dbpath = strdup(val);
 		}
 	}
 	fclose(infile);
 
-	if(!config->cachedirs) {
-		config->cachedirs = alpm_list_add(config->cachedirs, "/var/cache/pacman/pkg");
+	if(!caches) {
+		caches = alpm_list_add(caches, strdup("/var/cache/pacman/pkg"));
 	}
 
-	return config;
-}
-
-alpm_handle_t *initialize_handle_from_config(struct pu_config_t *config)
-{
-	alpm_list_t *c;
-	alpm_handle_t *handle = alpm_initialize(config->rootdir, config->dbpath, NULL);
+	handle = alpm_initialize(rootdir, dbpath, NULL);
 
 	if(!handle) {
 		return NULL;
 	}
 
-	for(c = config->cachedirs; c; c = c->next) {
-		alpm_option_add_cachedir(handle, c->data);
+	for(i = repos; i; i = i->next) {
+		alpm_register_syncdb(handle, i->data, ALPM_SIG_USE_DEFAULT);
 	}
+	FREELIST(repos);
+
+	for(i = caches; i; i = i->next) {
+		alpm_option_add_cachedir(handle, i->data);
+	}
+	FREELIST(caches);
 
 	return handle;
-}
-
-alpm_db_t *register_syncdb(alpm_handle_t *handle, struct pu_repo_t *repo)
-{
-	return alpm_register_syncdb(handle, repo->name, ALPM_SIG_USE_DEFAULT);
-}
-
-alpm_list_t *register_syncdbs(alpm_handle_t *handle, alpm_list_t *repos)
-{
-	alpm_list_t *r, *registered = NULL;
-	for(r = repos; r; r = r->next) {
-		registered = alpm_list_add(registered, register_syncdb(handle, r->data));
-	}
-	return registered;
 }
 
 void version(void) {
@@ -643,7 +608,6 @@ void scan_filesystem(alpm_handle_t *handle, int backups, int orphans) {
 }
 
 int main(int argc, char **argv) {
-	struct pu_config_t *config;
 	int missing_files = 0, backup_files = 0, orphan_files = 0;
 	alpm_handle_t *handle;
 
@@ -665,15 +629,12 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	config = initialize_config_from_file("/etc/pacman.conf");
-	handle = initialize_handle_from_config(config);
+	handle = initialize_from_file("/etc/pacman.conf");
 
 	if(!handle) {
 		fprintf(stderr, "Could not initialize alpm handle.\n");
 		exit(-1);
 	}
-
-	register_syncdbs(handle, config->repos);
 
 	if(backup_files || orphan_files) {
 		scan_filesystem(handle, backup_files, orphan_files);
