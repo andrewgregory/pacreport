@@ -210,16 +210,17 @@ void print_foreign(alpm_handle_t *handle)
 	alpm_list_free(matches);
 }
 
-void print_group_missing(alpm_handle_t *handle)
+void print_group_missing(alpm_handle_t *handle, alpm_list_t *groups)
 {
-	char **group, *groups[] = {"base", "base-devel", NULL};
 	alpm_db_t *localdb = alpm_get_localdb(handle);
 	alpm_list_t *localpkgs = alpm_db_get_pkgcache(localdb);
 	alpm_list_t *matches = NULL;
+	alpm_list_t *i;
 
-	for(group = groups; *group; group++) {
+	for(i = groups; i; i = i->next) {
+		const char *group = i->data;
 		alpm_list_t *p, *pkgs;
-		pkgs = alpm_find_group_pkgs(alpm_get_syncdbs(handle), *group);
+		pkgs = alpm_find_group_pkgs(alpm_get_syncdbs(handle), group);
 		for(p = pkgs; p; p = p->next) {
 			const char *pkgname = alpm_pkg_get_name(p->data);
 			if(!alpm_list_find_ptr(matches, p->data)
@@ -468,6 +469,7 @@ void usage(int ret) {
 	fputs("Options:\n", out);
 	fputs("  --backups                list .pac{save,orig,new} files\n", out);
 	fputs("                           (pass twice for extended search)\n", out);
+	fputs("  --groups=GROUP           list missing group packages\n", out);
 	fputs("  --missing-files          list missing package files\n", out);
 	fputs("  --unowned                list unowned files\n", out);
 	exit(ret);
@@ -608,22 +610,34 @@ void scan_filesystem(alpm_handle_t *handle, int backups, int orphans) {
 
 int main(int argc, char **argv) {
 	alpm_handle_t *handle;
+	alpm_list_t *groups = NULL;
 	int missing_files = 0, backup_files = 0, orphan_files = 0;
 
 	if(argc > 1) {
 		int c;
 
 		struct option long_options[] = {
-			{"backups",       no_argument,       &backup_files,  1},
-			{"help",          no_argument,       NULL, 'h'},
-			{"missing-files", no_argument,       &missing_files, 1},
-			{"unowned",       no_argument,       &orphan_files,  1},
-			{"version",       no_argument,       NULL, 'V'},
-			{0,               0,                 0,    0}
+			{"backups",       no_argument,       &backup_files,   1 },
+			{"groups",        required_argument, NULL,           'g'},
+			{"help",          no_argument,       NULL,           'h'},
+			{"missing-files", no_argument,       &missing_files,  1 },
+			{"unowned",       no_argument,       &orphan_files,   1 },
+			{"version",       no_argument,       NULL,           'V'},
+			{0, 0, 0, 0 }
 		};
 
 		while(( c = getopt_long(argc, argv, "hV", long_options, NULL)) != -1) {
 			switch(c) {
+				case 'g':
+					{
+						char *state, *group;
+						group = strtok_r(optarg, ",", &state);
+						while(group) {
+							groups = alpm_list_add(groups, strdup(group));
+							group = strtok_r(NULL, ",", &state);
+						}
+					}
+					break;
 				case 'h': usage(0); break;
 				case 'V': version(); break;
 				case '?': usage(1); break;
@@ -646,7 +660,13 @@ int main(int argc, char **argv) {
 	print_toplevel_depends(handle);
 	print_foreign(handle);
 
-	print_group_missing(handle);
+	if(!groups) {
+		groups = alpm_list_add(groups, strdup("base"));
+		groups = alpm_list_add(groups, strdup("base-devel"));
+	}
+	print_group_missing(handle, groups);
+	FREELIST(groups);
+
 	if(missing_files) {
 		print_missing_files(handle);
 	}

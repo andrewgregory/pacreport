@@ -31,6 +31,11 @@ OPTIONS
     default.  In order to search the remainder of the filesystem, pass this
     twice of in conjunction with *--unowned*.
 
+*--groups=GROUP[,GROUP2...]*::
+    List packages which belong to these packages but are not installed.
+    Multiple groups may be separated by a comma ','.  May be specified multiple
+    times.  Defaults to 'base,base-devel'.
+
 *-h, --help*::
     Display brief help message.
 
