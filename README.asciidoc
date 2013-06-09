@@ -4,41 +4,41 @@
 pacreport(8)
 ============
 
-Name
+NAME
 ----
 pacreport - generate installed package report
 
-Synopsis
+SYNOPSIS
 --------
 'pacreport' [--version|--help]
 
-Description
+DESCRIPTION
 -----------
 Generates a comprehensive package report for alpm-based systems:
 
-* top level packages installed explicitly
-* top level packages installed as dependencies
+* unneeded packages installed explicitly
+* unneeded packages installed as dependencies
 * installed packages not in a repository
 * packages missing from base and base-devel groups
 * missing package files
 * cache directory sizes
 * packages sizes include dependencies not needed by other packages
 
-Options
+OPTIONS
 -------
-*-h, --help*::
-    Display brief help message.
-
-*-V, --version*::
-    Display version information.
-
-*--missing-files, --no-missing-files*::
-    Check for package files that do not exist on the filesystem.
-
 *-b, --backups*::
     Scans the filesystem for pacman's backup files.  Only searches */etc* by
     default.  In order to search the remainder of the filesystem, pass this
     twice of in conjunction with *--unowned*.
 
+*-h, --help*::
+    Display brief help message.
+
+*--missing-files*::
+    List package files that do not exist on the filesystem.
+
 *--unowned*::
     Scan the filesystem for files not owned by any package.
+
+*-V, --version*::
+    Display version information.

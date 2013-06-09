@@ -496,8 +496,16 @@ void version(void) {
 
 void usage(int ret) {
 	FILE *out = (ret ? stderr : stdout);
-	fputs("Usage: pacreport [--help|--version]\n", out);
-	fputs("       pacreport [--missing-files|--no-missing-files]\n", out);
+	fputs("Usage: pacreport [options]\n", out);
+	fputs("       pacreport [--help|--version]\n", out);
+	fputs("\n", out);
+	fputs("Options:\n", out);
+	fputs("  -b, --backups            list .pac{save,orig,new} files\n", out);
+	fputs("                           (pass twice for extended search)\n", out);
+	fputs("  -h, --help               display this help\n", out);
+	fputs("  --missing-files          list missing package files\n", out);
+	fputs("  --unowned                list unowned files\n", out);
+	fputs("  --version                display version information\n", out);
 	exit(ret);
 }
 
@@ -647,8 +655,6 @@ int main(int argc, char **argv) {
 			version();
 		} else if(strcmp(*argv, "--missing-files") == 0) {
 			missing_files = 1;
-		} else if(strcmp(*argv, "--no-missing-files") == 0) {
-			missing_files = 0;
 		} else if(strcmp(*argv, "--backups") == 0 || strcmp(*argv, "-b") == 0) {
 			backup_files++;
 		} else if(strcmp(*argv, "--unowned") == 0) {
