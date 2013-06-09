@@ -10,7 +10,7 @@
 #include <alpm.h>
 #include <alpm_list.h>
 
-#define VERSION "0.3"
+#define VERSION "1.0"
 
 struct pkg_file_t {
 	alpm_pkg_t *pkg;
