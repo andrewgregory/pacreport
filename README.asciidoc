@@ -26,7 +26,7 @@ Generates a comprehensive package report for alpm-based systems:
 
 OPTIONS
 -------
-*-b, --backups*::
+*--backups*::
     Scans the filesystem for pacman's backup files.  Only searches */etc* by
     default.  In order to search the remainder of the filesystem, pass this
     twice of in conjunction with *--unowned*.

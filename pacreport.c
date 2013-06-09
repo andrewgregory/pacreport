@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <getopt.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -465,12 +466,10 @@ void usage(int ret) {
 	fputs("       pacreport [--help|--version]\n", out);
 	fputs("\n", out);
 	fputs("Options:\n", out);
-	fputs("  -b, --backups            list .pac{save,orig,new} files\n", out);
+	fputs("  --backups                list .pac{save,orig,new} files\n", out);
 	fputs("                           (pass twice for extended search)\n", out);
-	fputs("  -h, --help               display this help\n", out);
 	fputs("  --missing-files          list missing package files\n", out);
 	fputs("  --unowned                list unowned files\n", out);
-	fputs("  --version                display version information\n", out);
 	exit(ret);
 }
 
@@ -553,7 +552,7 @@ void _scan_filesystem(alpm_handle_t *handle, const char *dir, int backups,
 			}
 		} else {
 			if(orphans && file_is_unowned(handle, path)) {
-					*orphans_found = alpm_list_add(*orphans_found, strdup(path));
+				*orphans_found = alpm_list_add(*orphans_found, strdup(path));
 			}
 
 			if(backups) {
@@ -608,24 +607,27 @@ void scan_filesystem(alpm_handle_t *handle, int backups, int orphans) {
 }
 
 int main(int argc, char **argv) {
-	int missing_files = 0, backup_files = 0, orphan_files = 0;
 	alpm_handle_t *handle;
+	int missing_files = 0, backup_files = 0, orphan_files = 0;
 
-	/* process arguments */
-	for(argv++; *argv; argv++) {
-		if(strcmp(*argv, "--help") == 0 || strcmp(*argv, "-h") == 0) {
-			usage(0);
-		} else if(strcmp(*argv, "--version") == 0 || strcmp(*argv, "-V") == 0) {
-			version();
-		} else if(strcmp(*argv, "--missing-files") == 0) {
-			missing_files = 1;
-		} else if(strcmp(*argv, "--backups") == 0 || strcmp(*argv, "-b") == 0) {
-			backup_files++;
-		} else if(strcmp(*argv, "--unowned") == 0) {
-			orphan_files++;
-		} else {
-			fprintf(stderr, "Invalid argument: '%s'\n", *argv);
-			usage(-1);
+	if(argc > 1) {
+		int c;
+
+		struct option long_options[] = {
+			{"backups",       no_argument,       &backup_files,  1},
+			{"help",          no_argument,       NULL, 'h'},
+			{"missing-files", no_argument,       &missing_files, 1},
+			{"unowned",       no_argument,       &orphan_files,  1},
+			{"version",       no_argument,       NULL, 'V'},
+			{0,               0,                 0,    0}
+		};
+
+		while(( c = getopt_long(argc, argv, "hV", long_options, NULL)) != -1) {
+			switch(c) {
+				case 'h': usage(0); break;
+				case 'V': version(); break;
+				case '?': usage(1); break;
+			}
 		}
 	}
 
