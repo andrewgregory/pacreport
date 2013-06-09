@@ -29,7 +29,7 @@ OPTIONS
 *--backups*::
     Scans the filesystem for pacman's backup files.  Only searches */etc* by
     default.  In order to search the remainder of the filesystem, pass this
-    twice of in conjunction with *--unowned*.
+    twice or in conjunction with *--unowned-files*.
 
 *--groups=GROUP[,GROUP2...]*::
     List packages which belong to these packages but are not installed.
@@ -42,7 +42,7 @@ OPTIONS
 *--missing-files*::
     List package files that do not exist on the filesystem.
 
-*--unowned*::
+*--unowned-files*::
     Scan the filesystem for files not owned by any package.
 
 *-V, --version*::

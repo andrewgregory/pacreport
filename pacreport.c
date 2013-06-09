@@ -471,7 +471,7 @@ void usage(int ret) {
 	fputs("                           (pass twice for extended search)\n", out);
 	fputs("  --groups=GROUP           list missing group packages\n", out);
 	fputs("  --missing-files          list missing package files\n", out);
-	fputs("  --unowned                list unowned files\n", out);
+	fputs("  --unowned-files          list unowned files\n", out);
 	exit(ret);
 }
 
@@ -621,7 +621,7 @@ int main(int argc, char **argv) {
 			{"groups",        required_argument, NULL,           'g'},
 			{"help",          no_argument,       NULL,           'h'},
 			{"missing-files", no_argument,       &missing_files,  1 },
-			{"unowned",       no_argument,       &orphan_files,   1 },
+			{"unowned-files", no_argument,       &orphan_files,   1 },
 			{"version",       no_argument,       NULL,           'V'},
 			{0, 0, 0, 0 }
 		};
