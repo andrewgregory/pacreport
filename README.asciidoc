@@ -1,6 +1,9 @@
 // Copyright (C) 2013 Andrew Gregory <andrew.gregory.8@gmail.com>
 // See the COPYING file for copying permissions.
 
+pacreport has been merged into pacutils:
+https://github.com/andrewgregory/pacutils
+
 pacreport(1)
 ============
 
